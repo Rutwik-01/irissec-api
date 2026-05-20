@@ -43,7 +43,7 @@ pipeline {
                 echo "=== CODE QUALITY: SonarQube static analysis ==="
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh """
-                        sonar-scanner \
+                        /opt/sonar-scanner/bin/sonar-scanner \
                           -Dsonar.login=\${SONAR_TOKEN} \
                           -Dsonar.host.url=${SONAR_HOST}
                     """
