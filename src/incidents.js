@@ -1,6 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { getDb } = require('../db');
+const { getDb } = require('./db');
 
 const router = express.Router();
 
