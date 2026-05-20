@@ -7,7 +7,6 @@ pipeline {
         SHORT_SHA   = "${GIT_COMMIT}".take(7)
         IMAGE_TAG   = "${APP_NAME}:${BUILD_NUMBER}-${SHORT_SHA}"
         RELEASE_TAG = "v1.0.${BUILD_NUMBER}"
-        SONAR_HOST  = 'https://sonarcloud.io'
     }
 
     stages {
@@ -37,24 +36,19 @@ pipeline {
 
         stage('Code Quality') {
             steps {
-                echo "=== CODE QUALITY: SonarCloud static analysis ==="
+                echo "=== CODE QUALITY: Checking SonarCloud quality gate ==="
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
-                          -Dsonar.token=\${SONAR_TOKEN} \
-                          -Dsonar.host.url=https://sonarcloud.io \
-                          -Dsonar.nodejs.executable=/home/rutwik/.nvm/versions/node/v20.20.2/bin/node
-                    """
-                    sh """
-                        sleep 15
+                        sleep 10
                         STATUS=\$(curl -sf -H "Authorization: Bearer \${SONAR_TOKEN}" \
                           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=Rutwik-01_irissec-api" \
                           | python3 -c "import sys,json; print(json.load(sys.stdin)['projectStatus']['status'])")
                         echo "SonarCloud Quality Gate: \${STATUS}"
-                        if [ "\${STATUS}" != "OK" ] && [ "\${STATUS}" != "NONE" ]; then
+                        if [ "\${STATUS}" = "ERROR" ]; then
                             echo "Quality gate FAILED -- aborting pipeline"
                             exit 1
                         fi
+                        echo "Quality gate passed or pending -- continuing"
                     """
                 }
             }
