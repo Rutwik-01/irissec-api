@@ -76,8 +76,8 @@ except Exception as e:
     print(f"Could not parse npm-audit.json: {e}")
 PYEOF
                 '''
-                sh "trivy image --exit-code 1 --severity CRITICAL --ignorefile .trivyignore ${REGISTRY}/${IMAGE_TAG} || (echo 'Trivy: CRITICAL CVEs found -- aborting'; exit 1)"
-                sh "trivy image --severity HIGH,CRITICAL --ignorefile .trivyignore --format table ${REGISTRY}/${IMAGE_TAG} > trivy-report.txt 2>&1 || true"
+                sh "trivy image --exit-code 1 --severity CRITICAL ${REGISTRY}/${IMAGE_TAG} || (echo 'Trivy: CRITICAL CVEs found -- aborting'; exit 1)"
+                sh "trivy image --severity HIGH,CRITICAL --format table ${REGISTRY}/${IMAGE_TAG} > trivy-report.txt 2>&1 || true"
                 archiveArtifacts artifacts: 'npm-audit.json, trivy-report.txt', fingerprint: true
             }
         }
