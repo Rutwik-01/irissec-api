@@ -1,4 +1,3 @@
-# irissec-api
 # IrisSec — Incident Response Intelligence System
 
 A RESTful API for tracking and managing cybersecurity incidents,
