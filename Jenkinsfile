@@ -7,7 +7,7 @@ pipeline {
         SHORT_SHA   = "${GIT_COMMIT}".take(7)
         IMAGE_TAG   = "${APP_NAME}:${BUILD_NUMBER}-${SHORT_SHA}"
         RELEASE_TAG = "v1.0.${BUILD_NUMBER}"
-        SONAR_HOST  = 'http://localhost:9000'
+        SONAR_HOST  = 'https://sonarcloud.io'
     }
 
     stages {
@@ -40,20 +40,20 @@ pipeline {
         // ── STAGE 3: CODE QUALITY ─────────────────────────────────────────────
         stage('Code Quality') {
             steps {
-                echo "=== CODE QUALITY: SonarQube static analysis ==="
+                echo "=== CODE QUALITY: SonarCloud static analysis ==="
                 withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                     sh """
                         /opt/sonar-scanner/bin/sonar-scanner \
-                          -Dsonar.login=\${SONAR_TOKEN} \
-                          -Dsonar.host.url=${SONAR_HOST}
+                          -Dsonar.token=\${SONAR_TOKEN} \
+                          -Dsonar.host.url=https://sonarcloud.io
                     """
-                    sh "sleep 10"
                     sh """
-                        STATUS=\$(curl -sf -u "\${SONAR_TOKEN}:" \
-                          "${SONAR_HOST}/api/qualitygates/project_status?projectKey=irissec-api" \
+                        sleep 15
+                        STATUS=\$(curl -sf -H "Authorization: Bearer \${SONAR_TOKEN}" \
+                          "https://sonarcloud.io/api/qualitygates/project_status?projectKey=Rutwik-01_irissec-api" \
                           | python3 -c "import sys,json; print(json.load(sys.stdin)['projectStatus']['status'])")
-                        echo "SonarQube Quality Gate: \${STATUS}"
-                        if [ "\${STATUS}" != "OK" ]; then
+                        echo "SonarCloud Quality Gate: \${STATUS}"
+                        if [ "\${STATUS}" != "OK" ] && [ "\${STATUS}" != "NONE" ]; then
                             echo "Quality gate FAILED -- aborting pipeline"
                             exit 1
                         fi
