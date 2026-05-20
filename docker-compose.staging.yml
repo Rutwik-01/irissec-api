@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    image: ${IMAGE_TAG}
+    container_name: irissec-staging
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=staging
+      - APP_VERSION=${RELEASE_TAG:-staging}
+      - DB_PATH=/data/incidents.db
+      - API_KEY=${API_KEY}
+    volumes:
+      - irissec-staging-data:/data
+    restart: unless-stopped
+
+volumes:
+  irissec-staging-data:

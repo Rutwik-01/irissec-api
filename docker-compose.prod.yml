@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    image: ${IMAGE_TAG}
+    container_name: irissec-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - APP_VERSION=${RELEASE_TAG}
+      - DB_PATH=/data/incidents.db
+      - API_KEY=${API_KEY}
+    volumes:
+      - irissec-prod-data:/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: irissec-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: irissec-grafana
+    ports:
+      - "3030:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: always
+
+volumes:
+  irissec-prod-data:

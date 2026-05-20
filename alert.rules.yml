@@ -1,0 +1,50 @@
+groups:
+  - name: irissec-api-alerts
+    rules:
+
+      # Alert: Application is completely unreachable
+      - alert: IrisSecAppDown
+        expr: up{job="irissec-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "IrisSec API is DOWN"
+          description: "The irissec-prod container has not responded to a Prometheus scrape for more than 30 seconds. Immediate investigation required."
+
+      # Alert: High HTTP error rate (5xx responses > 5% over 5 minutes)
+      - alert: IrisSecHighErrorRate
+        expr: |
+          rate(http_requests_total{job="irissec-api", status_code=~"5.."}[5m])
+          /
+          rate(http_requests_total{job="irissec-api"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "IrisSec API high error rate"
+          description: "More than 5% of HTTP responses are returning 5xx status codes over the last 5 minutes."
+
+      # Alert: Slow response time (P95 latency > 2 seconds for 3 minutes)
+      - alert: IrisSecSlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="irissec-api"}[5m])
+          ) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "IrisSec API P95 response time exceeded 2 seconds"
+          description: "The 95th percentile response time has been above 2 seconds for more than 3 consecutive minutes."
+
+      # Alert: High unauthorized request rate (potential brute force on API key)
+      - alert: IrisSecHighUnauthorizedRate
+        expr: |
+          rate(http_requests_total{job="irissec-api", status_code="401"}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "IrisSec API high rate of 401 Unauthorized responses"
+          description: "More than 0.5 unauthorized requests per second over the last 5 minutes. Possible API key brute force attempt."

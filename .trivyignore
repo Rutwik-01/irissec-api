@@ -1,0 +1,7 @@
+# CVEs excluded from build failure — reviewed and justified
+# These Alpine base image findings are in packages not invoked
+# by the application runtime and are therefore not exploitable
+# in this container's execution context.
+
+# Example (uncomment and add real CVE IDs after first Trivy scan):
+# CVE-XXXX-XXXXX
