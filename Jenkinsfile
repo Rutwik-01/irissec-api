@@ -12,7 +12,6 @@ pipeline {
 
     stages {
 
-        // ── STAGE 1: BUILD ────────────────────────────────────────────────────
         stage('Build') {
             steps {
                 echo "=== BUILD: Installing dependencies and creating Docker image ==="
@@ -24,7 +23,6 @@ pipeline {
             }
         }
 
-        // ── STAGE 2: TEST ─────────────────────────────────────────────────────
         stage('Test') {
             steps {
                 echo "=== TEST: Running Jest unit and integration tests with coverage ==="
@@ -37,7 +35,6 @@ pipeline {
             }
         }
 
-        // ── STAGE 3: CODE QUALITY ─────────────────────────────────────────────
         stage('Code Quality') {
             steps {
                 echo "=== CODE QUALITY: SonarCloud static analysis ==="
@@ -45,7 +42,8 @@ pipeline {
                     sh """
                         /opt/sonar-scanner/bin/sonar-scanner \
                           -Dsonar.token=\${SONAR_TOKEN} \
-                          -Dsonar.host.url=https://sonarcloud.io
+                          -Dsonar.host.url=https://sonarcloud.io \
+                          -Dsonar.nodejs.executable=/home/rutwik/.nvm/versions/node/v20.20.2/bin/node
                     """
                     sh """
                         sleep 15
@@ -62,11 +60,9 @@ pipeline {
             }
         }
 
-        // ── STAGE 4: SECURITY ─────────────────────────────────────────────────
         stage('Security') {
             steps {
                 echo "=== SECURITY: npm audit (SCA) and Trivy (Docker image scan) ==="
-
                 sh '''
                     npm audit --audit-level=critical --json > npm-audit.json 2>&1 || true
                     python3 - << 'PYEOF'
@@ -86,14 +82,12 @@ except Exception as e:
     print(f"Could not parse npm-audit.json: {e}")
 PYEOF
                 '''
-
                 sh "trivy image --exit-code 1 --severity CRITICAL --ignorefile .trivyignore ${REGISTRY}/${IMAGE_TAG} || (echo 'Trivy: CRITICAL CVEs found -- aborting'; exit 1)"
                 sh "trivy image --severity HIGH,CRITICAL --ignorefile .trivyignore --format table ${REGISTRY}/${IMAGE_TAG} > trivy-report.txt 2>&1 || true"
                 archiveArtifacts artifacts: 'npm-audit.json, trivy-report.txt', fingerprint: true
             }
         }
 
-        // ── STAGE 5: DEPLOY (STAGING) ─────────────────────────────────────────
         stage('Deploy') {
             steps {
                 echo "=== DEPLOY: Deploying to staging environment (port 3001) ==="
@@ -122,14 +116,11 @@ PYEOF
             }
         }
 
-        // ── STAGE 6: RELEASE (PRODUCTION) ────────────────────────────────────
         stage('Release') {
             steps {
                 echo "=== RELEASE: Tagging ${RELEASE_TAG} and deploying to production ==="
-
                 sh "docker tag ${REGISTRY}/${IMAGE_TAG} ${REGISTRY}/${APP_NAME}:${RELEASE_TAG}"
                 sh "docker push ${REGISTRY}/${APP_NAME}:${RELEASE_TAG}"
-
                 withCredentials([string(credentialsId: 'api-key', variable: 'API_KEY')]) {
                     sh """
                         export IMAGE_TAG=${REGISTRY}/${APP_NAME}:${RELEASE_TAG}
@@ -139,7 +130,6 @@ PYEOF
                         docker-compose -f docker-compose.prod.yml up -d
                     """
                 }
-
                 sh '''
                     for i in $(seq 1 12); do
                         STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health)
@@ -152,7 +142,6 @@ PYEOF
                     echo "Production health check FAILED"
                     exit 1
                 '''
-
                 withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh """
                         git config user.email "jenkins@irissec.local"
@@ -165,11 +154,9 @@ PYEOF
             }
         }
 
-        // ── STAGE 7: MONITORING ───────────────────────────────────────────────
         stage('Monitoring') {
             steps {
                 echo "=== MONITORING: Verifying metrics endpoint, Prometheus target, and alert rules ==="
-
                 sh '''
                     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/metrics)
                     echo "Metrics endpoint status: $STATUS"
@@ -179,7 +166,6 @@ PYEOF
                     fi
                     echo "Metrics endpoint is UP"
                 '''
-
                 sh '''
                     HEALTH=$(curl -s http://localhost:9090/api/v1/targets \
                       | python3 -c "
@@ -199,7 +185,6 @@ print('target-not-found')
                         echo "Warning: Prometheus target is $HEALTH"
                     fi
                 '''
-
                 sh '''
                     RULES=$(curl -s http://localhost:9090/api/v1/rules \
                       | python3 -c "
