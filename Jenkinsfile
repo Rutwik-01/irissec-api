@@ -47,6 +47,7 @@ pipeline {
                           -Dsonar.login=\${SONAR_TOKEN} \
                           -Dsonar.host.url=${SONAR_HOST}
                     """
+                    sh "sleep 10"
                     sh """
                         STATUS=\$(curl -sf -u "\${SONAR_TOKEN}:" \
                           "${SONAR_HOST}/api/qualitygates/project_status?projectKey=irissec-api" \
